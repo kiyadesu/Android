@@ -1,0 +1,188 @@
+//--------------------------------------
+//--- 010 Editor v5.0.2 Binary Template
+//
+// File: AndroidManifestTemplate.bt
+// Author: dongmu
+// Revision: 1.0
+// Purpose: Define a template for parsing
+//          AndroidManifest.xml binary files.
+//--------------------------------------
+
+// Define the structures used in a 
+// AndroidManifest.xml binary file 
+
+// Define Header
+typedef struct {
+    uint magicnumber;
+    uint filesize;
+} HEADER;
+
+// Define the string format
+typedef struct {
+    ushort sfSize;
+    if (sfSize > 0) 
+    {
+        struct {
+            char c1;
+            char c2;
+        } ONECHAR[ sfSize ];
+    }
+    ushort sfEnd;
+} STRING_ITEM;
+
+
+// Define the string chunk
+typedef struct {
+    uint scSignature;
+    uint scSize;
+    uint scStringCount;
+    uint scStyleCount;
+    uint scUNKNOWN;
+    uint scStringPoolOffset;
+    uint scStylePoolOffset;
+    uint scStringOffsets[ scStringCount ] <comment="Relative to the 0x8+scStringPoolOffset">;
+    
+    if (scStyleCount > 0) 
+        uint scStyleOffset[ scStylePoolOffset ];
+
+    // The Strings
+    local int i;
+    for (i = 0; i < scStringCount; i++) 
+    {
+        if ((0x8+scStringPoolOffset + scStringOffsets[ i ]) <  (0x8+scSize)) 
+        {
+            FSeek(0x8+scStringPoolOffset + scStringOffsets[ i ]);
+            STRING_ITEM strItem;
+        }
+    }
+    
+} STRINGCHUNK;
+
+// Define the Resource chunk
+typedef struct {
+
+    local int pos = FTell();
+
+    uint rcSignature;
+    uint rcSize;
+    uint rcItem[ rcSize/4 - 2 ];
+    
+} RESOURCEIDCHUNK;
+
+// Define the Start Namespace Chunk
+typedef struct {
+    uint sncSignature;
+    uint sncSize;
+    uint sncLineNumber;
+    uint sncUNKNOWN;
+    uint sncPrefix;
+    uint sncUri;
+} SNCHUNK;
+
+// Define the End Namespace Chunk
+typedef struct {
+    uint encSignature;
+    uint encSize;
+    uint encLineNumber;
+    uint encUNKNOWN;
+    uint encPrefix;
+    uint encUri;
+} ENCHUNK;
+
+// Define the Attribute Chunk
+typedef struct {
+    uint acNamespaceUri;
+    uint acName;
+    uint acValueStr;
+    uint acType <comment="right shift 24bit">;
+    uint acData;
+} ATTRIBUTECHUNK;
+
+
+// Define the Start Tag Chunk
+typedef struct {
+    local int pos = FTell();
+    uint stcSignature;
+    uint stcSize;
+    uint stcLineNumber;
+    uint stcUNKNOWN;
+    uint stcNamespaceUri;
+    uint stcName;
+    uint stcFlags;
+    uint stcAttributeCount;
+    uint stcClassAttribute;
+
+    while (FTell() != pos + stcSize)
+        ATTRIBUTECHUNK attributeChunk;
+} STCHUNK;
+
+// Define the End Tag Chunk
+typedef struct {
+    uint etcSignature;
+    uint etcSize;
+    uint etcLineNumber;
+    uint etcUNKNOWN;
+    uint etcNamespaceUri;
+    uint etcName;
+} ETCHUNK;
+
+// Define the Text Chunk
+typedef struct {
+    uint tcSignature;
+    uint tcSize;
+    uint tcLineNumber;
+    uint tcUNKNOWN;
+    uint tcName;
+    uint tcUNKNOWN;
+    uint tcUNNNOWN;
+} TEXTCHUNK;
+
+//--------------------------------------
+// Define the file
+
+local uint tag;
+
+LittleEndian();
+HEADER header;
+
+SetBackColor( cLtGreen );
+STRINGCHUNK stringChunk;
+// Sometimes there are some zeros padding after the string chunk
+FSeek(0x8+stringChunk.scSize);
+
+SetBackColor( cLtBlue );
+RESOURCEIDCHUNK resourceChunk;
+FSeek(resourceChunk.pos+resourceChunk.rcSize);
+
+while( !FEof() ) 
+{
+    // Read a tag
+    tag = ReadUInt( FTell() );
+
+    // Read data depending upon tag
+    if (tag == 0x00100100)
+    {
+        SetBackColor( cLtPurple );
+        SNCHUNK startNamespaceChunk;
+    }
+    else if (tag == 0x00100101)
+    {
+        SetBackColor( cLtPurple );
+        ENCHUNK endNamespaceChunk;
+    }
+    else if (tag == 0x00100102)
+    {
+        SetBackColor( cLtGreen );
+        STCHUNK startTagChunk;
+    }
+    else if (tag == 0x00100103)
+    {
+        SetBackColor( cLtGreen );
+        ETCHUNK endTagChunk;
+    }
+    else if (tag == 0x00100104)
+    {
+        SetBackColor( cLtBlue );
+        TEXTCHUNK TextChunk;
+    }
+}
