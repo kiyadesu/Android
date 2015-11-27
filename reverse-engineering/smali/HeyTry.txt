@@ -1,0 +1,70 @@
+Processing 'HeyTry.dex'...
+Opened 'HeyTry.dex', DEX version '035'
+Class #0            -
+  Class descriptor  : 'LHeyTry;'
+  Access flags      : 0x0000 ()
+  Superclass        : 'Ljava/lang/Object;'
+  Interfaces        -
+  Static fields     -
+  Instance fields   -
+  Direct methods    -
+    #0              : (in LHeyTry;)
+      name          : '<init>'
+      type          : '()V'
+      access        : 0x10000 (CONSTRUCTOR)
+      code          -
+      registers     : 1
+      ins           : 1
+      outs          : 1
+      insns size    : 4 16-bit code units
+      catches       : (none)
+      positions     : 
+        0x0000 line=3
+      locals        : 
+        0x0000 - 0x0004 reg=0 this LHeyTry; 
+    #1              : (in LHeyTry;)
+      name          : 'func'
+      type          : '()V'
+      access        : 0x0009 (PUBLIC STATIC)
+      code          -
+      registers     : 2
+      ins           : 0
+      outs          : 2
+      insns size    : 74 16-bit code units
+      catches       : 5
+        0x0002 - 0x0004
+          Ljava/lang/ArithmeticException; -> 0x0018
+        0x0007 - 0x0009
+          Ljava/lang/ArithmeticException; -> 0x0021
+          Ljava/lang/Exception; -> 0x002a
+        0x000c - 0x000e
+          Ljava/lang/ArithmeticException; -> 0x0031
+          Ljava/lang/Exception; -> 0x003a
+        0x000f - 0x0017
+          Ljava/lang/Exception; -> 0x003a
+        0x0032 - 0x0039
+          Ljava/lang/Exception; -> 0x003a
+      positions     : 
+        0x0000 line=8
+        0x0004 line=15
+        0x0005 line=16
+        0x0009 line=26
+        0x000a line=28
+        0x000e line=34
+        0x0014 line=35
+        0x0017 line=40
+        0x0018 line=10
+        0x0019 line=11
+        0x0021 line=18
+        0x0022 line=19
+        0x002a line=21
+        0x002b line=22
+        0x0031 line=30
+        0x0032 line=31
+        0x003a line=37
+        0x003b line=38
+        0x0041 line=34
+      locals        : 
+  Virtual methods   -
+  source_file_idx   : 1 (HeyTry.java)
+
