@@ -9,7 +9,7 @@
 	.eabi_attribute 30, 6
 	.eabi_attribute 34, 0
 	.eabi_attribute 18, 4
-	.file	"hello-world.c"	@源文件名
+	.file	"hello-arm.c"	@源文件名
 	.section	.rodata	@声明只读数据段
 	.align	2		@对其方式为2^2个字节
 .LC0:				@标号.LC0
