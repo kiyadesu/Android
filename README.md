@@ -1,6 +1,12 @@
 # Android
 For Android Security...
 
+## docs
+写程序会用到的库哇,头文件哇,逆向时可以查询的文件哇,吧啦吧啦
+
+## hook
+学习hook
+
 ## lab-mouse
 实验对象
 
@@ -12,6 +18,3 @@ For Android Security...
 
 ## used-on-phone
 在手机上使用的工具
-
-## docs
-一些逆向中用到的文档.
