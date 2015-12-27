@@ -6,10 +6,14 @@
 #include<sys/ptrace.h>
 #include<linux/wait.h>    // WUNTRACED
 #include<time.h>
+ #include <sys/mman.h>  //mmap
+#include <dlfcn.h>  //dlopen
 
 
 #define CPSR_T_MASK     ( 1u << 5 )     //cpsr的T标记位有效
 #define long_size sizeof(long)
+#define libc_path "libc.so"
+
 
 //目标进程id,模块名
 void* get_module_base(int pid, const char* module_name)
@@ -100,7 +104,7 @@ int ptrace_continue(pid_t pid)
     return 0;
 }
 
-//目标进程id,参数地址,参数个数,寄存器地址
+//目标进程id,目标函数地址，参数地址,参数个数,寄存器地址
 int ptrace_call(int pid, long addr, long *params, uint32_t params_num, struct pt_regs* regs)
 {
     uint32_t i;
@@ -130,9 +134,7 @@ int ptrace_call(int pid, long addr, long *params, uint32_t params_num, struct pt
 
     int stat = 0;                   //WUNTRACED表示如果pid进程进入暂停状态，那么waitpid函数立即返回
     waitpid(pid,&stat,WUNTRACED);   //等待sleep函数执行,等待过程中本进程暂停执行
-    printf("%d\n", stat);
     while (stat != 0xb7f) {     //0xb7f表示目标进程进入暂停状态
-        printf("%d\n", stat);
         if (ptrace_continue(pid) == -1) {
             return -1;
         }
@@ -142,6 +144,7 @@ int ptrace_call(int pid, long addr, long *params, uint32_t params_num, struct pt
     return 0;
 }
 
+//目标进程已经加载过相应的so库
 void inject(int pid)
 {
     struct pt_regs old_regs,regs;
@@ -152,10 +155,76 @@ void inject(int pid)
 
     long parameters[1];
     parameters[0] = 10;
-    sleep_addr = get_remote_addr(pid, "libc.so", (void*)sleep);
+    sleep_addr = get_remote_addr(pid, libc_path, (void*)sleep);
     ptrace_call(pid,sleep_addr,parameters,1,&regs);
     //恢复寄存器
     ptrace(PTRACE_SETREGS, pid, NULL, &old_regs);
+}
+
+//目标进程没有加载过相应的so库
+void inject2(int pid, char* so_path, char* function_name, char* function_parameters)
+{
+    struct pt_regs old_regs,regs;
+    long mmap_addr,dlopen_addr,dlsym_addr,dlclose_addr;
+    //保存寄存器环境
+    ptrace(PTRACE_GETREGS, pid, NULL, &old_regs);
+    memcpy(&regs,&old_regs,sizeof(regs));
+
+    //获得libc中函数地址
+    mmap_addr = get_remote_addr(pid, libc_path, (void*)mmap);
+    dlopen_addr = get_remote_addr(pid, libc_path, (void*)dlopen);
+    dlsym_addr = get_remote_addr(pid, libc_path, (void*)dlsym);
+    dlclose_addr = get_remote_addr(pid, libc_path, (void*)dlclose);
+
+    printf("addrs: %p %p %p %p\n", (void*)mmap_addr,(void*)dlopen_addr,(void*)dlsym_addr,(void*)dlclose_addr);
+
+    //调用mmap
+    long parameters[10];
+    parameters[0] = 0;  //构造参数
+    parameters[1] = 0x4000;
+    parameters[2] = PROT_READ | PROT_WRITE | PROT_EXEC;
+    parameters[3] = MAP_ANONYMOUS | MAP_PRIVATE;
+    parameters[4] = 0;
+    parameters[5] = 0;
+    ptrace_call(pid,mmap_addr,parameters,6,&regs);
+    ptrace(PTRACE_GETREGS,pid,NULL,&regs);  //调用结束后获得r0中保存的返回值
+    long mapping_base = regs.ARM_r0;
+
+    printf("mapping_base: %p\n", (void*)mapping_base);
+
+    //调用dlopen加载so库
+    writeData(pid, mapping_base, so_path, strlen(so_path)+1);   //将库名字符串放入目标进程空间
+    parameters[0] = mapping_base;
+    parameters[1] = RTLD_NOW | RTLD_GLOBAL;
+    ptrace_call(pid, dlopen_addr, parameters, 2, &regs);
+    ptrace(PTRACE_GETREGS,pid,NULL,&regs);  //调用结束后获得r0中保存的返回值
+    long handle = regs.ARM_r0;
+
+    printf("handle: %p\n", (void*)handle);
+
+    //找到目标函数地址
+    writeData(pid, mapping_base, function_name, strlen(function_name)+1);
+    parameters[0] = handle;
+    parameters[1] = mapping_base;
+    ptrace_call(pid, dlsym_addr, parameters, 2, &regs);
+    ptrace(PTRACE_GETREGS,pid,NULL,&regs);  //调用结束后获得r0中保存的返回值
+    long function_addr = regs.ARM_r0;
+
+    printf("function_addr: %p\n", (void*)function_addr);
+
+    //执行目标函数
+    writeData(pid, mapping_base, function_parameters, strlen(function_parameters)+1);
+    parameters[0] = mapping_base;
+    ptrace_call(pid, function_addr, parameters, 1, &regs);
+
+    //调用dlclose卸载so库
+    parameters[0] = handle;
+    ptrace_call(pid,dlclose_addr,parameters,1,&regs);
+
+    //恢复寄存器环境
+    ptrace(PTRACE_SETREGS,pid,NULL,&old_regs);
+
+    printf("end\n---\n");
 }
 
 int main(int argc, char* argv[])
@@ -171,7 +240,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    inject(pid);
+    inject2(pid,"/data/local/tmp/libhook-inject-so.so","hello","hijack");
 
     ptrace(PTRACE_DETACH, pid, NULL, NULL);
     return 0;
