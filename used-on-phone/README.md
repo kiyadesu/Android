@@ -8,5 +8,5 @@
 # de.robv.android.xposed.installer_v33_36570c.apk 
 xposed installer
 
-# ZjDroid_baidu.apk
+# ZjDroid.apk
 基于xposed的万能脱壳器,作者为大牛博主jack_jia
