@@ -1,4 +1,4 @@
-:point_right: [my collection](http://kiya.space/collection/)
+:point_right: [my collection](http://kiya.space/)
 
 # Android
 For Android Security...
